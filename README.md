@@ -1,4 +1,4 @@
-# TsetlinMinimal
+# Minimal Tsetlin Machine
 Minimal Tsetlin Machine implementation in just **200** lines of code.
 
 This may be useful for implementation in other programming languages.
