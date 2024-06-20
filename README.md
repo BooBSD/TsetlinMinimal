@@ -1,5 +1,5 @@
 # TsetlinMinimal
-Minimal Tsetlin Machine implementation
+Minimal Tsetlin Machine implementation in just 200 lines of code.
 
 How to run MNIST example
 ------------------------
