@@ -133,7 +133,8 @@ end
 
 function predict(tm::TMClassifier, X::Vector{TMInput})::Vector
     predicted::Vector = Vector{eltype(first(keys(tm.clauses)))}(undef, length(X))  # Predefine vector for @threads access
-    @threads for i in eachindex(X)
+#    @threads for i in eachindex(X)
+    for i in eachindex(X)
         predicted[i] = predict(tm, X[i])
     end
     return predicted
@@ -162,7 +163,8 @@ function train!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector; shuffle::Bool=t
     if shuffle
         X, Y = unzip(Random.shuffle(collect(zip(X, Y))))
     end
-    @threads for i in eachindex(Y)
+#    @threads for i in eachindex(Y)
+    for i in eachindex(Y)
         train!(tm, X[i], Y[i], shuffle=shuffle)
     end
 end
