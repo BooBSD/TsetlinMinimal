@@ -59,8 +59,8 @@ function initialize!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector)
 end
 
 function check_clause(x::TMInput, literals::Vector{UInt16})::Bool
-    @inbounds for i in eachindex(literals)
-        if !x[literals[i]]
+    @inbounds for l in literals
+        if !x[l]
             return false
         end
     end
@@ -68,8 +68,8 @@ function check_clause(x::TMInput, literals::Vector{UInt16})::Bool
 end
 
 function vote(ta::TATeam, x::TMInput)::Tuple{Int64, Int64}
-    pos = sum(check_clause(x, ta.positive_included_literals[i]) for i in eachindex(ta.positive_included_literals))
-    neg = sum(check_clause(x, ta.negative_included_literals[i]) for i in eachindex(ta.negative_included_literals))
+    pos = sum(check_clause(x, l) for l in ta.positive_included_literals)
+    neg = sum(check_clause(x, l) for l in ta.negative_included_literals)
     return pos, neg
 end
 
