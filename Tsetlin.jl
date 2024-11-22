@@ -133,17 +133,11 @@ end
 
 function predict(tm::TMClassifier, X::Vector{TMInput})::Vector
     predicted::Vector = Vector{eltype(first(keys(tm.clauses)))}(undef, length(X))  # Predefine vector for @threads access
-#    @threads for i in eachindex(X)
-    @inbounds for i in eachindex(X)
+    @threads for i in eachindex(X)
+#    @inbounds for i in eachindex(X)
         predicted[i] = predict(tm, X[i])
     end
     return predicted
-end
-
-function accuracy(predicted::Vector, Y::Vector)::Float64
-    @assert eltype(predicted) == eltype(Y)
-    @assert length(predicted) == length(Y)
-    return sum(@inbounds 1 for (p, y) in zip(predicted, Y) if p == y; init=0) / length(Y)
 end
 
 function train!(tm::TMClassifier, x::TMInput, y::Any; shuffle::Bool=true)
@@ -163,10 +157,16 @@ function train!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector; shuffle::Bool=t
     if shuffle
         X, Y = unzip(Random.shuffle(collect(zip(X, Y))))
     end
-#    @threads for i in eachindex(Y)
-    @inbounds for i in eachindex(Y)
+    @threads for i in eachindex(Y)
+#    @inbounds for i in eachindex(Y)
         train!(tm, X[i], Y[i], shuffle=shuffle)
     end
+end
+
+function accuracy(predicted::Vector, Y::Vector)::Float64
+    @assert eltype(predicted) == eltype(Y)
+    @assert length(predicted) == length(Y)
+    return sum(@inbounds 1 for (p, y) in zip(predicted, Y) if p == y; init=0) / length(Y)
 end
 
 function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vector, y_test::Vector, epochs::Int64; shuffle::Bool=true, verbose::Int=1)::TMClassifier
