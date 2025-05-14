@@ -29,23 +29,24 @@ end
 mutable struct TMClassifier
     clauses_num::Int64
     T::Int64
-    R::Float64
+    S::Int64
+    s::Int64
     L::Int64
     const include_limit::Int64
     const state_min::Int64
     const state_max::Int64
     const clauses::Dict{Any, TATeam}
 
-    function TMClassifier(clauses_num::Int64, T::Int64, R::Float64; states_num::Int64=256, include_limit::Int64=128, L::Int64=16)
-        return new(clauses_num, T, R, L, include_limit, typemin(UInt8), states_num - 1, Dict())
+    function TMClassifier(clauses_num::Int64, T::Int64, S::Int64; states_num::Int64=256, include_limit::Int64=128, L::Int64=16)
+        return new(clauses_num, T, S, 0, L, include_limit, typemin(UInt8), states_num - 1, Dict())
     end
 end
 
 struct TMInput <: AbstractVector{Bool}
-    x::Vector{Bool}
+    x::BitVector
 
-    function TMInput(x::Vector{Bool}; negate::Bool=true)
-        return negate ? new([x; [!_x for _x in x]]) : new(x)
+    function TMInput(x::AbstractArray{Bool}; negate::Bool=true)
+        return new(vec(negate ? [x; [!_x for _x in x]] : x))
     end
 end
 
@@ -53,6 +54,7 @@ Base.size(x::TMInput)::Tuple{Int64} = size(x.x)
 Base.getindex(x::TMInput, i::Int)::Bool = x.x[i]
 
 function initialize!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector)
+    tm.s = round(Int, length(first(X)) / tm.S)
     for cls in collect(Set(Y))
         tm.clauses[cls] = TATeam(length(first(X)), tm.clauses_num, tm.include_limit, tm.state_min, tm.state_max)
     end
@@ -79,9 +81,9 @@ function feedback!(tm::TMClassifier, ta::TATeam, x::TMInput, clauses1::Matrix{UI
 
     # Feedback 1
     @inbounds for (j, c) in enumerate(eachcol(clauses1))
-        if (rand() < update)
+        if rand() < update
             if check_clause(x, literals1[j])
-                if (length(literals1[j]) <= tm.L)
+                if length(literals1[j]) <= tm.L
                     @inbounds for i = 1:ta.clause_size
                         if (x[i] == true) && (c[i] < ta.state_max)
                             c[i] += one(UInt8)
@@ -89,13 +91,14 @@ function feedback!(tm::TMClassifier, ta::TATeam, x::TMInput, clauses1::Matrix{UI
                     end
                 end
                 @inbounds for i = 1:ta.clause_size
-                    if (rand() > tm.R) && (x[i] == false) && (c[i] < ta.include_limit) && (c[i] > ta.state_min)
+                    if (x[i] == false) && (c[i] < ta.include_limit) && (c[i] > ta.state_min)
                         c[i] -= one(UInt8)
                     end
                 end
             else
-                @inbounds for i = 1:ta.clause_size
-                    if (rand() > tm.R) && (c[i] > ta.state_min)
+                @inbounds for _ in 1:tm.s
+                    i = rand(1:ta.clause_size)  # Here's one random only.
+                    if c[i] > ta.state_min
                         c[i] -= one(UInt8)
                     end
                 end
@@ -105,10 +108,10 @@ function feedback!(tm::TMClassifier, ta::TATeam, x::TMInput, clauses1::Matrix{UI
     end
     # Feedback 2
     @inbounds for (j, c) in enumerate(eachcol(clauses2))
-        if (rand() < update)
+        if rand() < update
             if check_clause(x, literals2[j])
                 @inbounds for i = 1:ta.clause_size
-                    if (rand() <= tm.R) && (x[i] == false) && (c[i] < ta.include_limit)
+                    if (x[i] == false) && (c[i] < ta.include_limit)
                         c[i] += one(UInt8)
                     end
                 end
@@ -134,7 +137,6 @@ end
 function predict(tm::TMClassifier, X::Vector{TMInput})::Vector
     predicted::Vector = Vector{eltype(first(keys(tm.clauses)))}(undef, length(X))  # Predefine vector for @threads access
     @threads for i in eachindex(X)
-#    @inbounds for i in eachindex(X)
         predicted[i] = predict(tm, X[i])
     end
     return predicted
@@ -158,7 +160,6 @@ function train!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector; shuffle::Bool=t
         X, Y = unzip(Random.shuffle(collect(zip(X, Y))))
     end
     @threads for i in eachindex(Y)
-#    @inbounds for i in eachindex(Y)
         train!(tm, X[i], Y[i], shuffle=shuffle)
     end
 end
@@ -170,9 +171,12 @@ function accuracy(predicted::Vector, Y::Vector)::Float64
 end
 
 function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vector, y_test::Vector, epochs::Int64; shuffle::Bool=true, verbose::Int=1)::TMClassifier
+    if length(tm.clauses) == 0
+        initialize!(tm, x_train, y_train)
+    end
     if verbose > 0
         println("\nRunning in $(nthreads()) threads.")
-        println("Accuracy over $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), R: $(tm.R), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)):\n")
+        println("Accuracy over $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)):\n")
     end
     best_tm = (0.0, nothing)
     all_time = @elapsed begin
@@ -190,7 +194,7 @@ function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vect
         end
     end
     if verbose > 0
-        println("\nDone. $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), R: $(tm.R), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)).")
+        println("\nDone. $(epochs) epochs (Clauses: $(tm.clauses_num), T: $(tm.T), S: $(tm.S) (s: $(tm.s)), L: $(tm.L), states_num: $(tm.state_max + 1), include_limit: $(tm.include_limit)).")
         elapsed = Time(0) + Second(floor(Int, all_time))
         @printf("Time elapsed: %s. Best accuracy was: %.2f%%.\n\n", elapsed, best_tm[1] * 100)
     end
