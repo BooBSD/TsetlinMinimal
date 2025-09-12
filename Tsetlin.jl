@@ -20,8 +20,8 @@ mutable struct TATeam
     function TATeam(clause_size::Int64, clauses_num::Int64, include_limit::Int64, state_min::Int64, state_max::Int64)
         positive_clauses = fill(UInt8(include_limit - 1), clause_size, floor(Int, clauses_num / 2))
         negative_clauses = fill(UInt8(include_limit - 1), clause_size, floor(Int, clauses_num / 2))
-        positive_included_literals = fill([], floor(Int, clauses_num / 2))
-        negative_included_literals = fill([], floor(Int, clauses_num / 2))
+        positive_included_literals = [UInt16[] for _ in 1:floor(Int, clauses_num / 2)]
+        negative_included_literals = [UInt16[] for _ in 1:floor(Int, clauses_num / 2)]
         return new(include_limit, state_min, state_max, positive_clauses, negative_clauses, positive_included_literals, negative_included_literals, clause_size)
     end
 end
@@ -55,7 +55,7 @@ Base.getindex(x::TMInput, i::Int)::Bool = x.x[i]
 
 function initialize!(tm::TMClassifier, X::Vector{TMInput}, Y::Vector)
     tm.s = round(Int, length(first(X)) / tm.S)
-    for cls in collect(Set(Y))
+    for cls in unique(Y)
         tm.clauses[cls] = TATeam(length(first(X)), tm.clauses_num, tm.include_limit, tm.state_min, tm.state_max)
     end
 end
