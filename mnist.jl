@@ -33,7 +33,7 @@ L = 12
 # S = 30
 # L = 12  # 10
 
-EPOCHS = 500
+EPOCHS = 1000
 
 # Training the TM model
 tm = TMClassifier(CLAUSES, T, S, L=L, states_num=256, include_limit=200)

@@ -76,8 +76,8 @@ function vote(ta::TATeam, x::TMInput)::Tuple{Int64, Int64}
 end
 
 function feedback!(tm::TMClassifier, ta::TATeam, x::TMInput, clauses1::Matrix{UInt8}, clauses2::Matrix{UInt8}, literals1::Vector{Vector{UInt16}}, literals2::Vector{Vector{UInt16}}, positive::Bool)
-    v::Int64 = clamp(-(vote(ta, x)...), -tm.T, tm.T)
-    update::Float64 = (positive ? (tm.T - v) : (tm.T + v)) / (tm.T * 2)
+    v = clamp(-(vote(ta, x)...), -tm.T, tm.T)
+    update = (positive ? (tm.T - v) : (tm.T + v)) / (tm.T * 2)
 
     # Feedback 1
     @inbounds for (j, c) in enumerate(eachcol(clauses1))
@@ -122,10 +122,10 @@ function feedback!(tm::TMClassifier, ta::TATeam, x::TMInput, clauses1::Matrix{UI
 end
 
 function predict(tm::TMClassifier, x::TMInput)::Any
-    best_vote::Int64 = typemin(Int64)
-    best_cls::Any = nothing
-    @inbounds for (cls, ta) in tm.clauses
-        v::Int64 = -(vote(ta, x)...)
+    best_vote = typemin(Int64)
+    best_cls = nothing
+    for (cls, ta) in tm.clauses
+        v = -(vote(ta, x)...)
         if v > best_vote
             best_vote = v
             best_cls = cls
@@ -167,7 +167,7 @@ end
 function accuracy(predicted::Vector, Y::Vector)::Float64
     @assert eltype(predicted) == eltype(Y)
     @assert length(predicted) == length(Y)
-    return sum(@inbounds 1 for (p, y) in zip(predicted, Y) if p == y; init=0) / length(Y)
+    return sum(1 for (p, y) in zip(predicted, Y) if p == y; init=0) / length(Y)
 end
 
 function train!(tm::TMClassifier, x_train::Vector, y_train::Vector, x_test::Vector, y_test::Vector, epochs::Int64; shuffle::Bool=true, verbose::Int=1)::TMClassifier
