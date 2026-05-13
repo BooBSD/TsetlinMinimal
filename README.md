@@ -19,6 +19,6 @@ Run the following command:
 julia -t auto mnist.jl
 ```
 
-### 📌 Note
-
-🚀 A faster and more optimized version is available here: https://github.com/BooBSD/Tsetlin.jl
+> [!NOTE]  
+> A faster and more optimized version is available here:  
+> 🚀 https://github.com/BooBSD/Tsetlin.jl
