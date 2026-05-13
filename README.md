@@ -17,7 +17,7 @@ curl -fsSL https://install.julialang.org | sh
 Run the following command:
 
 ```shell
-julia --project=. -O3 -t auto mnist.jl
+julia -t auto mnist.jl
 ```
 
 ### 📌 Note
